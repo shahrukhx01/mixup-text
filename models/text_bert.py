@@ -1,5 +1,12 @@
-from transformers.modeling_bert import *
 from .config import MODELS
+from transformers.models.bert.modeling_bert import (
+    BertPreTrainedModel,
+    BertEmbeddings,
+    BertEncoder,
+    BertPooler,
+)
+import torch
+from torch import nn
 
 
 class MyBertModel(BertPreTrainedModel):
@@ -36,26 +43,28 @@ class MyBertModel(BertPreTrainedModel):
         self.embeddings.word_embeddings = value
 
     def _prune_heads(self, heads_to_prune):
-        """ Prunes heads of the model.
-            heads_to_prune: dict of {layer_num: list of heads to prune in this layer}
-            See base class PreTrainedModel
+        """Prunes heads of the model.
+        heads_to_prune: dict of {layer_num: list of heads to prune in this layer}
+        See base class PreTrainedModel
         """
         for layer, heads in heads_to_prune.items():
             self.encoder.layer[layer].attention.prune_heads(heads)
 
     def _forward_init(
-            self,
-            input_ids=None,
-            attention_mask=None,
-            token_type_ids=None,
-            position_ids=None,
-            head_mask=None,
-            inputs_embeds=None,
-            encoder_hidden_states=None,
-            encoder_attention_mask=None,
+        self,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        head_mask=None,
+        inputs_embeds=None,
+        encoder_hidden_states=None,
+        encoder_attention_mask=None,
     ):
         if input_ids is not None and inputs_embeds is not None:
-            raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
+            raise ValueError(
+                "You cannot specify both input_ids and inputs_embeds at the same time"
+            )
         elif input_ids is not None:
             input_shape = input_ids.size()
         elif inputs_embeds is not None:
@@ -72,16 +81,24 @@ class MyBertModel(BertPreTrainedModel):
 
         # We can provide a self-attention mask of dimensions [batch_size, from_seq_length, to_seq_length]
         # ourselves in which case we just need to make it broadcastable to all heads.
-        extended_attention_mask: torch.Tensor = self.get_extended_attention_mask(attention_mask, input_shape, device)
+        extended_attention_mask: torch.Tensor = self.get_extended_attention_mask(
+            attention_mask, input_shape, device
+        )
 
         # If a 2D ou 3D attention mask is provided for the cross-attention
         # we need to make broadcastabe to [batch_size, num_heads, seq_length, seq_length]
         if self.config.is_decoder and encoder_hidden_states is not None:
-            encoder_batch_size, encoder_sequence_length, _ = encoder_hidden_states.size()
+            (
+                encoder_batch_size,
+                encoder_sequence_length,
+                _,
+            ) = encoder_hidden_states.size()
             encoder_hidden_shape = (encoder_batch_size, encoder_sequence_length)
             if encoder_attention_mask is None:
                 encoder_attention_mask = torch.ones(encoder_hidden_shape, device=device)
-            encoder_extended_attention_mask = self.invert_attention_mask(encoder_attention_mask)
+            encoder_extended_attention_mask = self.invert_attention_mask(
+                encoder_attention_mask
+            )
         else:
             encoder_extended_attention_mask = None
 
@@ -92,8 +109,18 @@ class MyBertModel(BertPreTrainedModel):
         # and head_mask is converted to shape [num_hidden_layers x batch x num_heads x seq_length x seq_length]
         head_mask = self.get_head_mask(head_mask, self.config.num_hidden_layers)
 
-        return input_ids, attention_mask, token_type_ids, position_ids, head_mask, inputs_embeds, \
-            encoder_hidden_states, encoder_attention_mask, extended_attention_mask, encoder_extended_attention_mask
+        return (
+            input_ids,
+            attention_mask,
+            token_type_ids,
+            position_ids,
+            head_mask,
+            inputs_embeds,
+            encoder_hidden_states,
+            encoder_attention_mask,
+            extended_attention_mask,
+            encoder_extended_attention_mask,
+        )
 
     def forward(
         self,
@@ -107,53 +134,72 @@ class MyBertModel(BertPreTrainedModel):
         encoder_attention_mask=None,
     ):
         r"""
-    Return:
-        :obj:`tuple(torch.FloatTensor)` comprising various elements depending on the configuration (:class:`~transformers.BertConfig`) and inputs:
-        last_hidden_state (:obj:`torch.FloatTensor` of shape :obj:`(batch_size, sequence_length, hidden_size)`):
-            Sequence of hidden-states at the output of the last layer of the model.
-        pooler_output (:obj:`torch.FloatTensor`: of shape :obj:`(batch_size, hidden_size)`):
-            Last layer hidden-state of the first token of the sequence (classification token)
-            further processed by a Linear layer and a Tanh activation function. The Linear
-            layer weights are trained from the next sentence prediction (classification)
-            objective during pre-training.
+        Return:
+            :obj:`tuple(torch.FloatTensor)` comprising various elements depending on the configuration (:class:`~transformers.BertConfig`) and inputs:
+            last_hidden_state (:obj:`torch.FloatTensor` of shape :obj:`(batch_size, sequence_length, hidden_size)`):
+                Sequence of hidden-states at the output of the last layer of the model.
+            pooler_output (:obj:`torch.FloatTensor`: of shape :obj:`(batch_size, hidden_size)`):
+                Last layer hidden-state of the first token of the sequence (classification token)
+                further processed by a Linear layer and a Tanh activation function. The Linear
+                layer weights are trained from the next sentence prediction (classification)
+                objective during pre-training.
 
-            This output is usually *not* a good summary
-            of the semantic content of the input, you're often better with averaging or pooling
-            the sequence of hidden-states for the whole input sequence.
-        hidden_states (:obj:`tuple(torch.FloatTensor)`, `optional`, returned when ``config.output_hidden_states=True``):
-            Tuple of :obj:`torch.FloatTensor` (one for the output of the embeddings + one for the output of each layer)
-            of shape :obj:`(batch_size, sequence_length, hidden_size)`.
+                This output is usually *not* a good summary
+                of the semantic content of the input, you're often better with averaging or pooling
+                the sequence of hidden-states for the whole input sequence.
+            hidden_states (:obj:`tuple(torch.FloatTensor)`, `optional`, returned when ``config.output_hidden_states=True``):
+                Tuple of :obj:`torch.FloatTensor` (one for the output of the embeddings + one for the output of each layer)
+                of shape :obj:`(batch_size, sequence_length, hidden_size)`.
 
-            Hidden-states of the model at the output of each layer plus the initial embedding outputs.
-        attentions (:obj:`tuple(torch.FloatTensor)`, `optional`, returned when ``config.output_attentions=True``):
-            Tuple of :obj:`torch.FloatTensor` (one for each layer) of shape
-            :obj:`(batch_size, num_heads, sequence_length, sequence_length)`.
+                Hidden-states of the model at the output of each layer plus the initial embedding outputs.
+            attentions (:obj:`tuple(torch.FloatTensor)`, `optional`, returned when ``config.output_attentions=True``):
+                Tuple of :obj:`torch.FloatTensor` (one for each layer) of shape
+                :obj:`(batch_size, num_heads, sequence_length, sequence_length)`.
 
-            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention
-            heads.
+                Attentions weights after the attention softmax, used to compute the weighted average in the self-attention
+                heads.
 
-    Examples::
+        Examples::
 
-        from transformers import BertModel, BertTokenizer
-        import torch
+            from transformers import BertModel, BertTokenizer
+            import torch
 
-        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-        model = BertModel.from_pretrained('bert-base-uncased')
+            tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+            model = BertModel.from_pretrained('bert-base-uncased')
 
-        input_ids = torch.tensor(tokenizer.encode("Hello, my dog is cute", add_special_tokens=True)).unsqueeze(0)  # Batch size 1
-        outputs = model(input_ids)
+            input_ids = torch.tensor(tokenizer.encode("Hello, my dog is cute", add_special_tokens=True)).unsqueeze(0)  # Batch size 1
+            outputs = model(input_ids)
 
-        last_hidden_states = outputs[0]  # The last hidden-state is the first element of the output tuple
+            last_hidden_states = outputs[0]  # The last hidden-state is the first element of the output tuple
 
         """
-        input_ids, attention_mask, token_type_ids, position_ids, head_mask, inputs_embeds, encoder_hidden_states, \
-            encoder_attention_mask, extended_attention_mask, encoder_extended_attention_mask = self._forward_init(
-                input_ids, attention_mask, token_type_ids, position_ids, head_mask, inputs_embeds,
-                encoder_hidden_states, encoder_attention_mask
-            )
+        (
+            input_ids,
+            attention_mask,
+            token_type_ids,
+            position_ids,
+            head_mask,
+            inputs_embeds,
+            encoder_hidden_states,
+            encoder_attention_mask,
+            extended_attention_mask,
+            encoder_extended_attention_mask,
+        ) = self._forward_init(
+            input_ids,
+            attention_mask,
+            token_type_ids,
+            position_ids,
+            head_mask,
+            inputs_embeds,
+            encoder_hidden_states,
+            encoder_attention_mask,
+        )
 
         embedding_output = self.embeddings(
-            input_ids=input_ids, position_ids=position_ids, token_type_ids=token_type_ids, inputs_embeds=inputs_embeds
+            input_ids=input_ids,
+            position_ids=position_ids,
+            token_type_ids=token_type_ids,
+            inputs_embeds=inputs_embeds,
         )
         encoder_outputs = self.encoder(
             embedding_output,
@@ -171,25 +217,51 @@ class MyBertModel(BertPreTrainedModel):
         return outputs  # sequence_output, pooled_output, (hidden_states), (attentions)
 
     def forward_mix_embed(self, x1, att1, x2, att2, lam):
-        x1, attention_mask1, token_type_ids, position_ids, head_mask, inputs_embeds, encoder_hidden_states, \
-            encoder_attention_mask, extended_attention_mask1, encoder_extended_attention_mask = self._forward_init(
-                input_ids=x1, attention_mask=att1)
+        (
+            x1,
+            attention_mask1,
+            token_type_ids,
+            position_ids,
+            head_mask,
+            inputs_embeds,
+            encoder_hidden_states,
+            encoder_attention_mask,
+            extended_attention_mask1,
+            encoder_extended_attention_mask,
+        ) = self._forward_init(input_ids=x1, attention_mask=att1)
         embedding_output1 = self.embeddings(
-            input_ids=x1, position_ids=position_ids, token_type_ids=token_type_ids, inputs_embeds=inputs_embeds
+            input_ids=x1,
+            position_ids=position_ids,
+            token_type_ids=token_type_ids,
+            inputs_embeds=inputs_embeds,
         )
 
-        x2, attention_mask2, token_type_ids, position_ids, head_mask, inputs_embeds, encoder_hidden_states, \
-            encoder_attention_mask, extended_attention_mask2, encoder_extended_attention_mask = self._forward_init(
-                input_ids=x2, attention_mask=att2)
+        (
+            x2,
+            attention_mask2,
+            token_type_ids,
+            position_ids,
+            head_mask,
+            inputs_embeds,
+            encoder_hidden_states,
+            encoder_attention_mask,
+            extended_attention_mask2,
+            encoder_extended_attention_mask,
+        ) = self._forward_init(input_ids=x2, attention_mask=att2)
 
         embedding_output2 = self.embeddings(
-            input_ids=x2, position_ids=position_ids, token_type_ids=token_type_ids, inputs_embeds=inputs_embeds
+            input_ids=x2,
+            position_ids=position_ids,
+            token_type_ids=token_type_ids,
+            inputs_embeds=inputs_embeds,
         )
 
         embedding_output = lam * embedding_output1 + (1.0 - lam) * embedding_output2
 
         # need to take max of both to ensure we don't miss attending to any value
-        extended_attention_mask = torch.max(extended_attention_mask1, extended_attention_mask2)
+        extended_attention_mask = torch.max(
+            extended_attention_mask1, extended_attention_mask2
+        )
         encoder_outputs = self.encoder(
             embedding_output,
             attention_mask=extended_attention_mask,
@@ -238,7 +310,7 @@ class TextBERT(nn.Module):
     def forward_mix_sent(self, x1, att1, x2, att2, lam):
         logits1 = self.forward(x1, att1)
         logits2 = self.forward(x2, att2)
-        y = lam * logits1 + (1.0-lam) * logits2
+        y = lam * logits1 + (1.0 - lam) * logits2
         return y
 
     def forward_mix_encoder(self, x1, att1, x2, att2, lam):
@@ -246,6 +318,6 @@ class TextBERT(nn.Module):
         outputs2 = self.bert(x2, att2)
         pooled_output1 = self.dropout(outputs1[1])
         pooled_output2 = self.dropout(outputs2[1])
-        pooled_output = lam * pooled_output1 + (1.0-lam) * pooled_output2
+        pooled_output = lam * pooled_output1 + (1.0 - lam) * pooled_output2
         y = self.classifier(pooled_output)
         return y
