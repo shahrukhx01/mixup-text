@@ -322,7 +322,7 @@ class Classification:
         print("testing start")
         test_loss, test_auroc = self.test(self.data_loaders.test_dataloader)
 
-        print("Train loss: {}, Train acc: {}".format(train_loss, train_acc))
+        # print("Train loss: {}, Train acc: {}".format(train_loss, train_acc))
         print("Val loss: {}, Val AUROC: {}".format(val_loss, val_auroc))
         print("Test loss: {}, Test AUROC: {}".format(test_loss, test_auroc))
 
