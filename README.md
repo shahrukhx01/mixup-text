@@ -14,14 +14,14 @@ from tqdm import tqdm
 
 SAMPLES_PER_CLASS = [50, 100, 150, 200, 250]
 N_AUGMENT = [0, 2, 4, 8, 16]
-datasets = ['bace', 'bbbp']
-methods = ['embed', 'encoder', 'sent']
+DATASETS = ['bace', 'bbbp']
+METHODS = ['embed', 'encoder', 'sent']
 out_file = 'eval_result_mixup_augment_v1.csv'
 N_TRIALS = 20
 EPOCHS = 20
 
-for method in methods:
-  for dataset in datasets:
+for method in METHODS:
+  for dataset in DATASETS:
       for SAMPLE in SAMPLES_PER_CLASS:
           for n_augment in N_AUGMENT:
               for i in tqdm(range(N_TRIALS)):
