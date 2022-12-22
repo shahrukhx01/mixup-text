@@ -16,7 +16,7 @@ SAMPLES_PER_CLASS = [50, 100, 150, 200, 250]
 N_AUGMENT = [0, 2, 4, 8, 16]
 DATASETS = ['bace', 'bbbp']
 METHODS = ['embed', 'encoder', 'sent']
-out_file = 'eval_result_mixup_augment_v1.csv'
+OUTPUT_FILE = 'eval_result_mixup_augment_v1.csv'
 N_TRIALS = 20
 EPOCHS = 20
 
@@ -28,6 +28,6 @@ for method in METHODS:
                   !python pseudo_label/main.py --dataset-name={dataset} --epoch={EPOCHS} \
                   --batch-size=16 --model-name-or-path=shahrukhx01/muv2x-simcse-smole-bert \
                   --samples-per-class={SAMPLE} --eval-after={EPOCHS} --train-log=0 --train-ssl=0 \
-                  --out-file={out_file} --n-augment={n_augment} --method={method}
-                  !cat {out_file}
+                  --out-file={OUTPUT_FILE} --n-augment={n_augment} --method={method}
+                  !cat {OUTPUT_FILE}
 ```
