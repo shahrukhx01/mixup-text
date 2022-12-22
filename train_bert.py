@@ -78,7 +78,7 @@ def parse_args():
     parser.add_argument(
         "--save-path", default="out", type=str, help="output log/result directory"
     )
-    parser.add_argument("--num-runs", default=10, type=int, help="number of runs")
+    parser.add_argument("--num-runs", default=1, type=int, help="number of runs")
     parser.add_argument(
         "--debug",
         type=int,
