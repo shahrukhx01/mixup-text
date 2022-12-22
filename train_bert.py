@@ -222,8 +222,6 @@ class Classification:
                 y_pred = y_pred.detach().cpu().numpy()
                 b_labels = b_labels.to("cpu").numpy()
                 auroc += flat_auroc_score(y_pred, b_labels)
-                print(f"AUROC {auroc}")
-
         avg_loss = test_loss
         acc = auroc
         return avg_loss, acc
@@ -317,9 +315,8 @@ class Classification:
         print("Best Validation AUROC: ", self.best_val_acc)
 
         self.model.load_state_dict(torch.load(self.model_save_path))
-        train_loss, train_acc = self.test(self.data_loaders.train_dataloader)
+        # train_loss, train_acc = self.test(self.data_loaders.train_dataloader)
         val_loss, val_auroc = self.test(self.data_loaders.validation_dataloader)
-        print("testing start")
         test_loss, test_auroc = self.test(self.data_loaders.test_dataloader)
 
         # print("Train loss: {}, Train acc: {}".format(train_loss, train_acc))
