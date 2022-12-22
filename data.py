@@ -1,5 +1,6 @@
 import pandas as pd
 import torch
+from enumeration import SmilesEnumerator
 from keras_preprocessing.sequence import pad_sequences
 from transformers import BertTokenizer
 from tqdm import tqdm
@@ -44,6 +45,7 @@ class MoleculeData:
         self.tokenizer = BertTokenizer.from_pretrained(
             model_name_or_path, do_lower_case=True
         )
+        self.enumerator = SmilesEnumerator()
         self.n_augment = n_augment
         self.samples_per_class = samples_per_class
 
@@ -77,10 +79,23 @@ class MoleculeData:
                 replace=False,
             )
             self.indices = list(tp) + list(tn)
-        """train_molecules, train_labels = (
-            np.array(train_molecules[self.indices]),
-            np.array(train_labels[self.indices]),
-        )"""
+        aug_molecules, aug_labels = [], []
+        if self.n_augment:
+            for train_smiles, train_label in tqdm(
+                zip(train_molecules[self.indices], train_labels[self.indices])
+            ):
+
+                molecules_augmented = self.enumerator.smiles_enumeration(
+                    input_smiles=train_smiles, n_augment=self.n_augment
+                )
+                if len(molecules_augmented):
+                    train_augmented_labels = [train_label] * len(molecules_augmented)
+                    aug_molecules += molecules_augmented
+                    aug_labels += train_augmented_labels
+        if len(aug_molecules) and len(aug_molecules) == len(aug_labels):
+            train_molecules, train_labels = list(train_molecules), list(train_labels)
+            train_molecules += aug_molecules
+            train_labels += aug_labels
 
         val_molecules = self.valid_dataset.ids
         val_labels = np.array([int(label[0]) for label in self.valid_dataset.y])
