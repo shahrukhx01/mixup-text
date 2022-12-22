@@ -22,12 +22,12 @@ EPOCHS = 20
 
 for method in METHODS:
   for dataset in DATASETS:
-      for SAMPLE in SAMPLES_PER_CLASS:
+      for sample in SAMPLES_PER_CLASS:
           for n_augment in N_AUGMENT:
               for i in tqdm(range(N_TRIALS)):
                   !python pseudo_label/main.py --dataset-name={dataset} --epoch={EPOCHS} \
                   --batch-size=16 --model-name-or-path=shahrukhx01/muv2x-simcse-smole-bert \
-                  --samples-per-class={SAMPLE} --eval-after={EPOCHS} --train-log=0 --train-ssl=0 \
+                  --samples-per-class={sample} --eval-after={EPOCHS} --train-log=0 --train-ssl=0 \
                   --out-file={OUTPUT_FILE} --n-augment={n_augment} --method={method}
                   !cat {OUTPUT_FILE}
 ```
