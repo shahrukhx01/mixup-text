@@ -116,6 +116,13 @@ def parse_args():
         metavar="PAT",
         help="Patience epochs when doing model selection if the model does not improve",
     )
+    parser.add_argument(
+        "--out-file",
+        type=str,
+        default="eval_result.csv",
+        metavar="OF",
+        help="outpul file for logging metrics",
+    )
     args = parser.parse_args()
     return args
 
@@ -212,11 +219,12 @@ class Classification:
                 loss = self.criterion(y_pred, b_labels)
                 test_loss += loss.item() * b_labels.shape[0]
                 total += b_labels.shape[0]
-                # correct += torch.sum(torch.argmax(y_pred, dim=1) == b_labels).item()
+                y_pred = y_pred.detach().cpu().numpy()
+                b_labels = b_labels.to("cpu").numpy()
                 auroc += flat_auroc_score(y_pred, b_labels)
 
-        avg_loss = test_loss / total
-        acc = auroc / total
+        avg_loss = test_loss
+        acc = auroc
         return avg_loss, acc
 
     def train_mixup(self, epoch):
@@ -330,23 +338,10 @@ class Classification:
 
 if __name__ == "__main__":
     args = parse_args()
-    num_runs = args.num_runs
+    cls = Classification(args)
+    val_auroc, test_auroc = cls.run()
 
-    val_auroc = []
-    test_auroc = []
-
-    for i in range(num_runs):
-        cls = Classification(args)
-        val, test = cls.run()
-        val_auroc.append(val)
-        test_auroc.append(test)
-        args.seed += 1
-
-    with open(os.path.join(args.save_path, args.name + "_result.txt", "a")) as f:
-        f.write(str(args))
-        f.write("val acc:" + str(val_auroc) + "\n")
-        f.write("test acc:" + str(test_auroc) + "\n")
-        f.write("mean val acc:" + str(np.mean(val_auroc)) + "\n")
-        f.write("std val acc:" + str(np.std(val_auroc, ddof=1)) + "\n")
-        f.write("mean test acc:" + str(np.mean(test_auroc)) + "\n")
-        f.write("std test acc:" + str(np.std(test_auroc, ddof=1)) + "\n\n\n")
+    with open(args.out_file, "a+") as f:
+        f.write(
+            f"{args.dataset_name}, {args.method}, {args.samples_per_class}, {args.n_augment}, {test_auroc}\n"
+        )
