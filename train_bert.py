@@ -8,11 +8,12 @@ import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
 from tqdm import tqdm
+from transformers.models.bert.modeling_bert import BertModel
 
 from models.text_bert import TextBERT
 from data_loader import MoleculeDataLoader
 from models.config import MODELS
-from transformers.models.bert.modeling_bert import BertModel
+from utils import flat_auroc_score
 
 
 def parse_args():
@@ -202,7 +203,7 @@ class Classification:
         self.model.eval()
         test_loss = 0
         total = 0
-        correct = 0
+        auroc = 0
         with torch.no_grad():
             for _, batch in enumerate(loader):
                 batch = tuple(t.to(self.device) for t in batch)
@@ -211,10 +212,11 @@ class Classification:
                 loss = self.criterion(y_pred, b_labels)
                 test_loss += loss.item() * b_labels.shape[0]
                 total += b_labels.shape[0]
-                correct += torch.sum(torch.argmax(y_pred, dim=1) == b_labels).item()
+                # correct += torch.sum(torch.argmax(y_pred, dim=1) == b_labels).item()
+                auroc += flat_auroc_score(y_pred, b_labels)
 
         avg_loss = test_loss / total
-        acc = 100.0 * correct / total
+        acc = auroc / total
         return avg_loss, acc
 
     def train_mixup(self, epoch):
@@ -306,45 +308,45 @@ class Classification:
             if self.early_stop:
                 break
         print("Training complete!")
-        print("Best Validation Acc: ", self.best_val_acc)
+        print("Best Validation AUROC: ", self.best_val_acc)
 
         self.model.load_state_dict(torch.load(self.model_save_path))
         train_loss, train_acc = self.test(self.data_loaders.train_dataloader)
-        val_loss, val_acc = self.test(self.data_loaders.validation_dataloader)
-        test_loss, test_acc = self.test(self.data_loaders.test_dataloader)
+        val_loss, val_auroc = self.test(self.data_loaders.validation_dataloader)
+        test_loss, test_auroc = self.test(self.data_loaders.test_dataloader)
 
         with open(self.log_path, "a", newline="") as out:
             writer = csv.writer(out)
             writer.writerow(["train", -1, -1, train_loss, train_acc])
-            writer.writerow(["val", -1, -1, val_loss, val_acc])
-            writer.writerow(["test", -1, -1, test_loss, test_acc])
+            writer.writerow(["val", -1, -1, val_loss, val_auroc])
+            writer.writerow(["test", -1, -1, test_loss, test_auroc])
 
         print("Train loss: {}, Train acc: {}".format(train_loss, train_acc))
-        print("Val loss: {}, Val acc: {}".format(val_loss, val_acc))
-        print("Test loss: {}, Test acc: {}".format(test_loss, test_acc))
+        print("Val loss: {}, Val AUROC: {}".format(val_loss, val_auroc))
+        print("Test loss: {}, Test AUROC: {}".format(test_loss, test_auroc))
 
-        return val_acc, test_acc
+        return val_auroc, test_auroc
 
 
 if __name__ == "__main__":
     args = parse_args()
     num_runs = args.num_runs
 
-    test_acc = []
-    val_acc = []
+    val_auroc = []
+    test_auroc = []
 
     for i in range(num_runs):
         cls = Classification(args)
         val, test = cls.run()
-        val_acc.append(val)
-        test_acc.append(test)
+        val_auroc.append(val)
+        test_auroc.append(test)
         args.seed += 1
 
     with open(os.path.join(args.save_path, args.name + "_result.txt", "a")) as f:
         f.write(str(args))
-        f.write("val acc:" + str(val_acc) + "\n")
-        f.write("test acc:" + str(test_acc) + "\n")
-        f.write("mean val acc:" + str(np.mean(val_acc)) + "\n")
-        f.write("std val acc:" + str(np.std(val_acc, ddof=1)) + "\n")
-        f.write("mean test acc:" + str(np.mean(test_acc)) + "\n")
-        f.write("std test acc:" + str(np.std(test_acc, ddof=1)) + "\n\n\n")
+        f.write("val acc:" + str(val_auroc) + "\n")
+        f.write("test acc:" + str(test_auroc) + "\n")
+        f.write("mean val acc:" + str(np.mean(val_auroc)) + "\n")
+        f.write("std val acc:" + str(np.std(val_auroc, ddof=1)) + "\n")
+        f.write("mean test acc:" + str(np.mean(test_auroc)) + "\n")
+        f.write("std test acc:" + str(np.std(test_auroc, ddof=1)) + "\n\n\n")
