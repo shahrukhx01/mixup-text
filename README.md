@@ -16,7 +16,7 @@ SAMPLES_PER_CLASS = [50, 100, 150, 200, 250]
 N_AUGMENT = [0, 2, 4, 8, 16]
 DATASETS = ['bace', 'bbbp']
 METHODS = ['embed', 'encoder', 'sent']
-OUTPUT_FILE = 'eval_result_mixup_augment_v1.csv'
+OUTPUT_FILE = '/nethome/skhan/mixup-text/eval_result_mixup_augment_v1.csv'
 N_TRIALS = 20
 EPOCHS = 20
 
@@ -25,9 +25,9 @@ for method in METHODS:
       for sample in SAMPLES_PER_CLASS:
           for n_augment in N_AUGMENT:
               for i in tqdm(range(N_TRIALS)):
-                  !python pseudo_label/main.py --dataset-name={dataset} --epoch={EPOCHS} \
+                  !python train_bert.py --dataset-name={dataset} --epoch={EPOCHS} \
                   --batch-size=16 --model-name-or-path=shahrukhx01/muv2x-simcse-smole-bert \
-                  --samples-per-class={sample} --eval-after={EPOCHS} --train-log=0 --train-ssl=0 \
-                  --out-file={OUTPUT_FILE} --n-augment={n_augment} --method={method}
+                  --samples-per-class={sample} --eval-after={EPOCHS} --method={method} \
+                  --out-file={OUTPUT_FILE} --n-augment={n_augment}
                   !cat {OUTPUT_FILE}
 ```
