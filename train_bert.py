@@ -222,6 +222,7 @@ class Classification:
                 y_pred = y_pred.detach().cpu().numpy()
                 b_labels = b_labels.to("cpu").numpy()
                 auroc += flat_auroc_score(y_pred, b_labels)
+                print(f"AUROC {auroc}")
 
         avg_loss = test_loss
         acc = auroc
@@ -309,10 +310,7 @@ class Classification:
                     epoch
                 )
             )
-            if self.args.method == "none":
-                self.train(epoch)
-            else:
-                self.train_mixup(epoch)
+            self.train_mixup(epoch)
             if self.early_stop:
                 break
         print("Training complete!")
@@ -321,13 +319,8 @@ class Classification:
         self.model.load_state_dict(torch.load(self.model_save_path))
         train_loss, train_acc = self.test(self.data_loaders.train_dataloader)
         val_loss, val_auroc = self.test(self.data_loaders.validation_dataloader)
+        print("testing start")
         test_loss, test_auroc = self.test(self.data_loaders.test_dataloader)
-
-        with open(self.log_path, "a", newline="") as out:
-            writer = csv.writer(out)
-            writer.writerow(["train", -1, -1, train_loss, train_acc])
-            writer.writerow(["val", -1, -1, val_loss, val_auroc])
-            writer.writerow(["test", -1, -1, test_loss, test_auroc])
 
         print("Train loss: {}, Train acc: {}".format(train_loss, train_acc))
         print("Val loss: {}, Val AUROC: {}".format(val_loss, val_auroc))
