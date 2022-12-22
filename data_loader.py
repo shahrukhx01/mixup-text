@@ -81,7 +81,7 @@ class MoleculeDataLoader:
         self.validation_dataloader = DataLoader(
             validation_data,
             sampler=validation_sampler,
-            batch_size=len(self.validation_data),
+            batch_size=len(validation_data),
         )
 
         test_data = TensorDataset(
@@ -91,7 +91,7 @@ class MoleculeDataLoader:
         )
         test_sampler = RandomSampler(test_data)
         self.test_dataloader = DataLoader(
-            test_data, sampler=test_sampler, batch_size=len(self.test_data)
+            test_data, sampler=test_sampler, batch_size=len(test_data)
         )
         print("finished creating dataloaders")
 
